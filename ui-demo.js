@@ -8,8 +8,6 @@ const {
   saveJourneyState,
 } = demoData;
 
-const USER_ROLE = "human";
-const USER_COLOR = "#171717";
 const MIN_POINT_DISTANCE = 1.5;
 
 const journeyState = loadJourneyState();
@@ -236,18 +234,21 @@ function startStroke(clientX, clientY, pointerId) {
     return false;
   }
 
+  const strokeIndex = state.strokes.length + 1;
+  const strokeRole = getRoleForStrokeIndex(strokeIndex);
+
   state.isDrawing = true;
   state.pointerId = pointerId;
   state.currentStroke = {
     id: `stroke-${Date.now()}`,
-    index: state.strokes.length + 1,
-    role: USER_ROLE,
-    color: USER_COLOR,
+    index: strokeIndex,
+    role: strokeRole,
+    color: getColorForRole(strokeRole),
     points: [point],
   };
 
   render();
-  setStatus(`正在绘制第 ${state.strokes.length + 1} 笔，轨迹会跟随你的手指实时显示。`, "正在绘制");
+  setStatus(`正在绘制第 ${strokeIndex} 笔，当前是${getCurrentRoleLabel()}。`, "正在绘制");
   return true;
 }
 
@@ -275,7 +276,7 @@ function finishStroke() {
   state.isDrawing = false;
   state.pointerId = null;
   render();
-  setStatus(`第 ${state.strokes.length} 笔已经保存，可以继续用手指作画。`, "笔画已保存");
+  setStatus(`第 ${state.strokes.length} 笔已经保存，下一笔轮到${getCurrentRoleLabel()}。`, "笔画已保存");
 }
 
 function getCanvasPoint(clientX, clientY) {
@@ -484,7 +485,7 @@ function getCurrentLevel() {
 }
 
 function getCurrentRole() {
-  return USER_ROLE;
+  return getRoleForStrokeIndex(state.strokes.length + 1);
 }
 
 function getCurrentRoleLabel() {
@@ -492,7 +493,10 @@ function getCurrentRoleLabel() {
 }
 
 function getRoleForStrokeIndex(strokeIndex) {
-  return USER_ROLE;
+  const blockSize = clamp(state.aiStrokeCount, 1, 5);
+  const cycleSize = blockSize * 2;
+  const cycleIndex = (strokeIndex - 1) % cycleSize;
+  return cycleIndex < blockSize ? "human" : "ai";
 }
 
 function getColorForRole(role) {
@@ -533,6 +537,17 @@ function roundTo(value, digits) {
   const base = 10 ** digits;
   return Math.round(value * base) / base;
 }
+
+window.DrawingDemoDebug = {
+  getStrokes() {
+    return state.strokes.map((stroke) => ({
+      index: stroke.index,
+      role: stroke.role,
+      color: stroke.color,
+      points: stroke.points.slice(),
+    }));
+  },
+};
 
 init();
 })();
