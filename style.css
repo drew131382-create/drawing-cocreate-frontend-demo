@@ -343,7 +343,7 @@ input,
 
 .map-network {
   position: relative;
-  min-height: 660px;
+  min-height: 720px;
   border-radius: 30px;
   overflow: hidden;
   background:
@@ -545,32 +545,32 @@ input,
 
 .level-node-1 {
   left: 72px;
-  top: 78px;
+  top: 88px;
 }
 
 .level-node-2 {
-  left: 264px;
-  top: 150px;
+  left: 252px;
+  top: 174px;
 }
 
 .level-node-3 {
-  left: 462px;
-  top: 224px;
+  left: 440px;
+  top: 320px;
 }
 
 .level-node-4 {
-  left: 648px;
-  top: 182px;
+  left: 650px;
+  top: 154px;
 }
 
 .level-node-5 {
-  right: 130px;
-  top: 286px;
+  right: 96px;
+  top: 338px;
 }
 
 .level-node-6 {
-  right: 54px;
-  bottom: 70px;
+  right: 34px;
+  top: 520px;
 }
 
 .sidebar {
@@ -1519,7 +1519,7 @@ input:focus-visible,
   }
 
   .map-network {
-    min-height: 520px;
+    min-height: 600px;
   }
 
   .level-node {
@@ -1533,33 +1533,33 @@ input:focus-visible,
   }
 
   .level-node-1 {
-    left: 36px;
-    top: 78px;
+    left: 30px;
+    top: 82px;
   }
 
   .level-node-2 {
-    left: 190px;
-    top: 140px;
+    left: 174px;
+    top: 166px;
   }
 
   .level-node-3 {
-    left: 340px;
-    top: 206px;
+    left: 320px;
+    top: 274px;
   }
 
   .level-node-4 {
-    left: 502px;
-    top: 168px;
+    left: 492px;
+    top: 154px;
   }
 
   .level-node-5 {
-    right: 110px;
-    top: 258px;
+    right: 74px;
+    top: 314px;
   }
 
   .level-node-6 {
-    right: 26px;
-    bottom: 54px;
+    right: 20px;
+    top: 438px;
   }
 
   .stage-card {
