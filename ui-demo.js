@@ -32,10 +32,6 @@ const dom = {
   valueAIStrokeCount: document.getElementById("valueAIStrokeCount"),
   inputSmoothingLevel: document.getElementById("inputSmoothingLevel"),
   valueSmoothingLevel: document.getElementById("valueSmoothingLevel"),
-  textModelName: document.getElementById("textModelName"),
-  textModelSource: document.getElementById("textModelSource"),
-  textRoundStatus: document.getElementById("textRoundStatus"),
-  textLevelValue: document.getElementById("textLevelValue"),
   textBoardLevel: document.getElementById("textBoardLevel"),
   textLastAction: document.getElementById("textLastAction"),
   textStatusMessage: document.getElementById("textStatusMessage"),
@@ -348,10 +344,6 @@ function setStatus(message, lastAction) {
 }
 
 function updateStatusUI() {
-  dom.textModelName.textContent = state.activeModel;
-  dom.textModelSource.textContent = "视频演示样机";
-  dom.textRoundStatus.textContent = `${getCurrentRoleLabel()}中`;
-  dom.textLevelValue.textContent = `第 ${state.level} 关`;
   dom.textBoardLevel.textContent = `第 ${state.level} 关`;
   dom.textLastAction.textContent = state.lastAction;
   dom.textStatusMessage.textContent = state.statusMessage;
