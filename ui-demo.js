@@ -60,6 +60,7 @@ const dom = {
 };
 
 const ctx = dom.canvas.getContext("2d");
+const prefersTouchInput = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 const supportsPointerInput = "PointerEvent" in window;
 
 function init() {
@@ -157,16 +158,20 @@ function bindControls() {
     setStatus(`线条圆滑度已调整到 ${state.smoothingLevel}。`, "调节已更新");
   });
 
-  if (supportsPointerInput) {
+  if (prefersTouchInput) {
+    dom.canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("touchend", handleTouchEnd, { passive: false });
+    window.addEventListener("touchcancel", handleTouchEnd, { passive: false });
+  } else if (supportsPointerInput) {
     dom.canvas.addEventListener("pointerdown", handlePointerDown);
     dom.canvas.addEventListener("pointermove", handlePointerMove);
     window.addEventListener("pointerup", handlePointerUp);
     window.addEventListener("pointercancel", handlePointerUp);
   } else {
-    dom.canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
-    dom.canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
-    dom.canvas.addEventListener("touchend", handleTouchEnd, { passive: false });
-    dom.canvas.addEventListener("touchcancel", handleTouchEnd, { passive: false });
+    dom.canvas.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
   }
 }
 
@@ -254,6 +259,33 @@ function handleTouchEnd(event) {
 
   const touch = getTrackedTouch(event.changedTouches);
   if (!touch) {
+    return;
+  }
+
+  event.preventDefault();
+  finishStroke();
+}
+
+function handleMouseDown(event) {
+  if (state.showLevelModal || state.isDrawing || event.button !== 0) {
+    return;
+  }
+
+  event.preventDefault();
+  startStroke(event.clientX, event.clientY, "mouse");
+}
+
+function handleMouseMove(event) {
+  if (!state.isDrawing || state.pointerId !== "mouse") {
+    return;
+  }
+
+  event.preventDefault();
+  moveStroke(event.clientX, event.clientY);
+}
+
+function handleMouseUp(event) {
+  if (!state.isDrawing || state.pointerId !== "mouse") {
     return;
   }
 
