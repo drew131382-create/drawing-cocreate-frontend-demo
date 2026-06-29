@@ -84,16 +84,17 @@ function buildModelOptions() {
 
 function bindControls() {
   dom.selectModels.addEventListener("change", () => {
-    state.activeModel = dom.selectModels.value;
-    setStatus(`已经切换到“${state.activeModel}”主题。`, "主题已切换");
+    state.activeModel = getCurrentLevel().theme;
+    dom.selectModels.value = state.activeModel;
+    updateStatusUI();
+    setStatus(`当前主题保持为“${state.activeModel}”，和所选关卡一致。`, "关卡主题");
   });
 
   dom.btnRandom.addEventListener("click", () => {
-    const levels = window.DrawingDemoData.levelCatalog;
-    const nextLevel = levels[Math.floor(Math.random() * levels.length)];
-    state.activeModel = nextLevel.theme;
-    dom.selectModels.value = nextLevel.theme;
-    setStatus(`帮你随机换到了“${nextLevel.theme}”主题。`, "随机主题");
+    state.activeModel = getCurrentLevel().theme;
+    dom.selectModels.value = state.activeModel;
+    updateStatusUI();
+    setStatus(`当前主题固定为“${state.activeModel}”，和你进入的关卡保持一致。`, "关卡主题");
   });
 
   dom.btnClear.addEventListener("click", () => {
@@ -182,7 +183,7 @@ function resizeCanvas() {
 }
 
 function handlePointerDown(event) {
-  if (state.showLevelModal) {
+  if (state.showLevelModal || state.isDrawing) {
     return;
   }
 
@@ -226,7 +227,7 @@ function handleTouchStart(event) {
 }
 
 function handleTouchMove(event) {
-  if (!state.isDrawing || event.touches.length > 1) {
+  if (!state.isDrawing || event.touches.length > 1 || typeof state.pointerId !== "string") {
     return;
   }
 
@@ -240,7 +241,7 @@ function handleTouchMove(event) {
 }
 
 function handleTouchEnd(event) {
-  if (!state.isDrawing) {
+  if (!state.isDrawing || typeof state.pointerId !== "string") {
     return;
   }
 
@@ -439,6 +440,7 @@ function syncSmoothingControls() {
 }
 
 function syncLevelSelection() {
+  state.activeModel = getCurrentLevel().theme;
   dom.selectModels.value = state.activeModel;
 }
 
@@ -458,8 +460,10 @@ function setStatus(message, lastAction) {
 
 function updateStatusUI() {
   const currentLevel = getCurrentLevel();
+  state.activeModel = currentLevel.theme;
+  dom.selectModels.value = currentLevel.theme;
   dom.textBoardLevel.textContent = currentLevel.title;
-  dom.textCurrentTheme.textContent = state.activeModel;
+  dom.textCurrentTheme.textContent = currentLevel.theme;
   dom.textBoardNoteDescription.textContent = currentLevel.description;
   dom.textLastAction.textContent = state.lastAction;
   dom.textStatusMessage.textContent = state.statusMessage;
