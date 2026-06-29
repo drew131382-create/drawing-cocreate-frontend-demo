@@ -60,6 +60,7 @@ const dom = {
 };
 
 const ctx = dom.canvas.getContext("2d");
+const supportsPointerInput = "PointerEvent" in window;
 
 function init() {
   buildModelOptions();
@@ -156,15 +157,17 @@ function bindControls() {
     setStatus(`线条圆滑度已调整到 ${state.smoothingLevel}。`, "调节已更新");
   });
 
-  dom.canvas.addEventListener("pointerdown", handlePointerDown);
-  dom.canvas.addEventListener("pointermove", handlePointerMove);
-  dom.canvas.addEventListener("pointerup", handlePointerUp);
-  dom.canvas.addEventListener("pointerleave", handlePointerUp);
-  dom.canvas.addEventListener("pointercancel", handlePointerUp);
-  dom.canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
-  dom.canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
-  dom.canvas.addEventListener("touchend", handleTouchEnd, { passive: false });
-  dom.canvas.addEventListener("touchcancel", handleTouchEnd, { passive: false });
+  if (supportsPointerInput) {
+    dom.canvas.addEventListener("pointerdown", handlePointerDown);
+    dom.canvas.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+  } else {
+    dom.canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
+    dom.canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
+    dom.canvas.addEventListener("touchend", handleTouchEnd, { passive: false });
+    dom.canvas.addEventListener("touchcancel", handleTouchEnd, { passive: false });
+  }
 }
 
 function bindSliderPair(slider, input, onChange) {
@@ -183,7 +186,11 @@ function resizeCanvas() {
 }
 
 function handlePointerDown(event) {
-  if (state.showLevelModal || state.isDrawing) {
+  if (state.showLevelModal || state.isDrawing || !event.isPrimary) {
+    return;
+  }
+
+  if (event.pointerType === "mouse" && event.button !== 0) {
     return;
   }
 
@@ -195,7 +202,7 @@ function handlePointerDown(event) {
 }
 
 function handlePointerMove(event) {
-  if (!state.isDrawing || state.pointerId !== event.pointerId) {
+  if (!state.isDrawing || state.pointerId !== event.pointerId || !event.isPrimary) {
     return;
   }
 
@@ -204,7 +211,7 @@ function handlePointerMove(event) {
 }
 
 function handlePointerUp(event) {
-  if (!state.isDrawing || state.pointerId !== event.pointerId) {
+  if (!state.isDrawing || state.pointerId !== event.pointerId || !event.isPrimary) {
     return;
   }
 
