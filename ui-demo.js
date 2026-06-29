@@ -160,6 +160,10 @@ function bindControls() {
   dom.canvas.addEventListener("pointerup", handlePointerUp);
   dom.canvas.addEventListener("pointerleave", handlePointerUp);
   dom.canvas.addEventListener("pointercancel", handlePointerUp);
+  dom.canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
+  dom.canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
+  dom.canvas.addEventListener("touchend", handleTouchEnd, { passive: false });
+  dom.canvas.addEventListener("touchcancel", handleTouchEnd, { passive: false });
 }
 
 function bindSliderPair(slider, input, onChange) {
@@ -183,23 +187,10 @@ function handlePointerDown(event) {
   }
 
   event.preventDefault();
-  const point = getCanvasPoint(event);
-  if (!point) {
+  if (!startStroke(event.clientX, event.clientY, event.pointerId)) {
     return;
   }
-
-  state.isDrawing = true;
-  state.pointerId = event.pointerId;
-  state.currentStroke = {
-    id: `stroke-${Date.now()}`,
-    index: state.strokes.length + 1,
-    role: getRoleForStrokeIndex(state.strokes.length + 1),
-    color: getColorForRole(getRoleForStrokeIndex(state.strokes.length + 1)),
-    points: [point],
-  };
-
   dom.canvas.setPointerCapture?.(event.pointerId);
-  setStatus(`正在绘制第 ${state.strokes.length + 1} 笔，当前是${getCurrentRoleLabel()}。`, "正在绘制");
 }
 
 function handlePointerMove(event) {
@@ -208,8 +199,83 @@ function handlePointerMove(event) {
   }
 
   event.preventDefault();
-  const point = getCanvasPoint(event);
+  moveStroke(event.clientX, event.clientY);
+}
+
+function handlePointerUp(event) {
+  if (!state.isDrawing || state.pointerId !== event.pointerId) {
+    return;
+  }
+
+  event.preventDefault();
+  finishStroke();
+}
+
+function handleTouchStart(event) {
+  if (state.showLevelModal || event.touches.length === 0) {
+    return;
+  }
+
+  const touch = event.changedTouches[0];
+  if (!touch) {
+    return;
+  }
+
+  event.preventDefault();
+  startStroke(touch.clientX, touch.clientY, `touch-${touch.identifier}`);
+}
+
+function handleTouchMove(event) {
+  if (!state.isDrawing) {
+    return;
+  }
+
+  const touch = getTrackedTouch(event.changedTouches);
+  if (!touch) {
+    return;
+  }
+
+  event.preventDefault();
+  moveStroke(touch.clientX, touch.clientY);
+}
+
+function handleTouchEnd(event) {
+  if (!state.isDrawing) {
+    return;
+  }
+
+  const touch = getTrackedTouch(event.changedTouches);
+  if (!touch) {
+    return;
+  }
+
+  event.preventDefault();
+  finishStroke();
+}
+
+function startStroke(clientX, clientY, inputId) {
+  const point = getCanvasPoint(clientX, clientY);
   if (!point) {
+    return false;
+  }
+
+  state.isDrawing = true;
+  state.pointerId = inputId;
+  state.currentStroke = {
+    id: `stroke-${Date.now()}`,
+    index: state.strokes.length + 1,
+    role: getRoleForStrokeIndex(state.strokes.length + 1),
+    color: getColorForRole(getRoleForStrokeIndex(state.strokes.length + 1)),
+    points: [point],
+  };
+
+  setStatus(`正在绘制第 ${state.strokes.length + 1} 笔，当前是${getCurrentRoleLabel()}。`, "正在绘制");
+  return true;
+}
+
+function moveStroke(clientX, clientY) {
+  const point = getCanvasPoint(clientX, clientY);
+  if (!point || !state.currentStroke) {
     return;
   }
 
@@ -222,12 +288,7 @@ function handlePointerMove(event) {
   render();
 }
 
-function handlePointerUp(event) {
-  if (!state.isDrawing || state.pointerId !== event.pointerId) {
-    return;
-  }
-
-  event.preventDefault();
+function finishStroke() {
   if (state.currentStroke && state.currentStroke.points.length > 0) {
     state.strokes.push({ ...state.currentStroke, points: state.currentStroke.points.slice() });
   }
@@ -239,12 +300,20 @@ function handlePointerUp(event) {
   setStatus(`第 ${state.strokes.length} 笔已经保存，下一笔轮到${getCurrentRoleLabel()}。`, "笔画已保存");
 }
 
-function getCanvasPoint(event) {
+function getTrackedTouch(touchList) {
+  if (!touchList) {
+    return null;
+  }
+
+  return Array.from(touchList).find((touch) => `touch-${touch.identifier}` === state.pointerId) || null;
+}
+
+function getCanvasPoint(clientX, clientY) {
   const rect = dom.canvas.getBoundingClientRect();
   if (!rect.width || !rect.height) {
     return null;
   }
-  return [event.clientX - rect.left, event.clientY - rect.top];
+  return [clientX - rect.left, clientY - rect.top];
 }
 
 function render() {

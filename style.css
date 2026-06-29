@@ -1161,6 +1161,8 @@ input[type="range"]::-webkit-slider-thumb {
   box-shadow:
     12px 14px 0 rgba(183, 157, 107, 0.18),
     0 18px 32px rgba(74, 99, 149, 0.14);
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 
 #sketch::before {
