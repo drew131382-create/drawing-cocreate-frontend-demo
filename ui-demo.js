@@ -158,16 +158,16 @@ function bindControls() {
     setStatus(`线条圆滑度已调整到 ${state.smoothingLevel}。`, "调节已更新");
   });
 
-  if (prefersTouchInput) {
-    dom.canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
-    window.addEventListener("touchmove", handleTouchMove, { passive: false });
-    window.addEventListener("touchend", handleTouchEnd, { passive: false });
-    window.addEventListener("touchcancel", handleTouchEnd, { passive: false });
-  } else if (supportsPointerInput) {
+  if (supportsPointerInput) {
     dom.canvas.addEventListener("pointerdown", handlePointerDown);
     dom.canvas.addEventListener("pointermove", handlePointerMove);
     window.addEventListener("pointerup", handlePointerUp);
     window.addEventListener("pointercancel", handlePointerUp);
+  } else if (prefersTouchInput) {
+    dom.canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("touchend", handleTouchEnd, { passive: false });
+    window.addEventListener("touchcancel", handleTouchEnd, { passive: false });
   } else {
     dom.canvas.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("mousemove", handleMouseMove);
