@@ -1,0 +1,170 @@
+<!-- Copyright 2018 Google Inc. All Rights Reserved.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+==============================================================================-->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="stylesheet" href="./style.css?v=20260616-4">
+    <title>一起画画吧</title>
+  </head>
+  <body>
+    <div class="page-decor decor-cloud decor-cloud-left"></div>
+    <div class="page-decor decor-cloud decor-cloud-right"></div>
+    <div class="page-decor decor-star decor-star-top"></div>
+    <div class="page-decor decor-star decor-star-right"></div>
+    <div class="page-decor decor-rainbow"></div>
+    <div class="page-decor decor-crayon"></div>
+
+    <div class="app-shell">
+      <aside class="sidebar">
+        <section class="card hero-card tilt-left">
+          <div class="hero-card-top">
+            <h1>一起画画吧</h1>
+            <span class="hero-pill">视频演示样机</span>
+          </div>
+          <p>通过轮流切换黑色与蓝色笔画，模拟人类与 AI 共创的演示流程。</p>
+        </section>
+
+        <section class="card panel-card panel-blue tilt-right">
+          <h2>绘画主题</h2>
+          <label class="control-group control-block">
+            <span class="control-label">当前主题</span>
+            <div class="select-shell">
+              <select id="selectModels"></select>
+            </div>
+          </label>
+          <div class="button-row">
+            <button id="btnRandom">换个主题</button>
+            <button id="btnClear">重新开始</button>
+          </div>
+          <div class="button-row button-row-single">
+            <button id="btnExport">导出记录</button>
+          </div>
+        </section>
+
+        <section class="card panel-card panel-peach tilt-left">
+          <h2>和 AI 轮流画</h2>
+          <p class="panel-help">当前是录屏用样机，蓝色笔画同样由你手工完成。</p>
+          <div class="button-row">
+            <button id="btnGenerateAI">AI 接着画</button>
+            <button id="btnGenerateFullAI">AI 帮我画完整</button>
+          </div>
+          <div class="button-row">
+            <button id="btnKeepAI">保留这次</button>
+            <button id="btnRetryAI">换一个试试</button>
+          </div>
+          <div class="button-row">
+            <button id="btnUndoAI">撤回 AI</button>
+            <button id="btnUndoUser">撤回这笔</button>
+          </div>
+        </section>
+
+        <section class="card panel-card panel-mint tilt-right">
+          <h2>画画小调节</h2>
+          <div class="controls slider-stack">
+            <label class="control-group control-slider">
+              <div class="slider-head">
+                <span class="control-label">创意程度</span>
+                <input id="valueTemperature" type="number" min="0" max="1" step="0.05">
+              </div>
+              <input id="inputTemperature" type="range" min="0" max="1" step="0.05">
+            </label>
+
+            <label class="control-group control-slider">
+              <div class="slider-head">
+                <span class="control-label">每轮笔数</span>
+                <input id="valueAIStrokeCount" type="number" min="1" max="5" step="1">
+              </div>
+              <input id="inputAIStrokeCount" type="range" min="1" max="5" step="1">
+            </label>
+
+            <label class="control-group control-slider">
+              <div class="slider-head">
+                <span class="control-label">线条圆滑度</span>
+                <input id="valueSmoothingLevel" type="number" min="0" max="4" step="1">
+              </div>
+              <input id="inputSmoothingLevel" type="range" min="0" max="4" step="1">
+            </label>
+          </div>
+        </section>
+
+        <section class="card status-panel">
+          <div class="status-top">
+            <h2>现在状态</h2>
+            <span class="status-badge" id="textLastAction">准备好了</span>
+          </div>
+          <div class="status-main">
+            <div class="status-item">
+              <strong>现在状态</strong>
+              <span id="textStatusMessage">-</span>
+            </div>
+            <div class="status-tags">
+              <div class="status-tag"><strong>关卡：</strong><span id="textLevelValue">第 1 关</span></div>
+              <div class="status-tag"><strong>主题：</strong><span id="textModelName">-</span></div>
+              <div class="status-tag"><strong>模型来源：</strong><span id="textModelSource">-</span></div>
+              <div class="status-tag"><strong>AI 回合：</strong><span id="textRoundStatus">-</span></div>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <main class="stage">
+        <div class="stage-card">
+          <div class="stage-header">
+            <h2>画布区</h2>
+            <div class="legend-pills">
+              <span class="legend-pill legend-user">你来画：黑色</span>
+              <span class="legend-pill legend-ai">AI 来画：蓝色</span>
+            </div>
+          </div>
+
+          <div class="sketch-board">
+            <div class="paper-tape paper-tape-left"></div>
+            <div class="paper-tape paper-tape-right"></div>
+            <div class="level-badge" id="textBoardLevel">第 1 关</div>
+            <div class="board-note">
+              <strong>这里是画纸</strong>
+              <span>按每轮笔数轮流模拟人工作画和 AI 作画。</span>
+            </div>
+            <div class="board-smile board-smile-top"></div>
+            <div class="board-smile board-smile-bottom"></div>
+            <div class="board-star board-star-bottom"></div>
+            <div id="sketch">
+              <canvas id="drawCanvas"></canvas>
+              <div class="role-sticker role-human" id="roleSticker">人工作画</div>
+              <button class="finish-sticker" id="btnFinish" type="button">完成</button>
+              <div class="level-modal" id="levelModal" hidden>
+                <div class="level-modal-backdrop" data-close-modal="true"></div>
+                <div class="level-modal-card" role="dialog" aria-modal="true" aria-labelledby="levelModalTitle">
+                  <div class="modal-star"></div>
+                  <p class="level-modal-kicker">太棒啦</p>
+                  <h3 id="levelModalTitle">可以进入下一关</h3>
+                  <p class="level-modal-copy">这一关的共创演示已经完成，准备开启下一张画纸吧。</p>
+                  <div class="level-modal-actions">
+                    <button class="modal-secondary" id="btnCloseModal" type="button">再看一眼</button>
+                    <button class="modal-primary" id="btnNextLevel" type="button">进入下一关</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+  <script src="ui-demo.js"></script>
+</html>

@@ -1,0 +1,6 @@
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Local tooling
+.DS_Store

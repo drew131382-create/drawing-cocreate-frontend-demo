@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: drawing-cocreate-frontend-demo
+    runtime: static
+    plan: free
+    staticPublishPath: .
