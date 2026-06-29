@@ -23,12 +23,14 @@ function init() {
 }
 
 function bindControls() {
-  dom.btnStartCurrentLevel.addEventListener("click", () => {
+  dom.btnStartCurrentLevel.addEventListener("click", (event) => {
+    event.preventDefault();
     openLevel(state.recommendedLevelId);
   });
 
   dom.levelNodes.forEach((node) => {
-    node.addEventListener("click", () => {
+    node.addEventListener("click", (event) => {
+      event.preventDefault();
       openLevel(Number(node.dataset.levelId));
     });
   });
@@ -47,9 +49,11 @@ function updateMapUI() {
   dom.mapCurrentTheme.textContent = recommendedLevel.theme;
   dom.mapCurrentDescription.textContent = recommendedLevel.description;
   dom.btnStartCurrentLevel.textContent = `进入${recommendedLevel.title}`;
+  dom.btnStartCurrentLevel.href = `./level.html?level=${recommendedLevel.id}`;
 
   dom.levelNodes.forEach((node) => {
     const levelId = clampLevelId(node.dataset.levelId);
+    node.href = `./level.html?level=${levelId}`;
     node.classList.toggle("is-completed", state.completedLevels.includes(levelId));
     node.classList.toggle("is-recommended", state.recommendedLevelId === levelId);
     node.classList.toggle("is-selected", state.currentLevelId === levelId);

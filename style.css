@@ -46,13 +46,17 @@ body {
 
 button,
 select,
-input {
+input,
+.button-link,
+.level-node {
   font: inherit;
 }
 
 button,
 select,
 input,
+.button-link,
+.level-node,
 .role-sticker,
 .finish-sticker {
   touch-action: manipulation;
@@ -449,6 +453,7 @@ input,
   justify-content: center;
   gap: 8px;
   text-align: center;
+  text-decoration: none;
   transform: rotate(-2deg);
 }
 
@@ -456,7 +461,7 @@ input,
   transform: rotate(2deg);
 }
 
-.level-node:hover:not([disabled]) {
+.level-node:hover {
   transform: translateY(-3px) rotate(0deg) scale(1.02);
 }
 
@@ -747,13 +752,18 @@ select {
   margin-top: 8px;
 }
 
-button {
+button,
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 42px;
   padding: 9px 16px;
   border: 3px solid rgba(255, 255, 255, 0.96);
   border-radius: 999px;
   background: var(--white);
   color: var(--blue-deep);
+  text-decoration: none;
   font-size: 14px;
   font-weight: 900;
   cursor: pointer;
@@ -761,11 +771,13 @@ button {
   transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
 }
 
-button:hover:not([disabled]) {
+button:hover:not([disabled]),
+.button-link:hover {
   transform: translateY(-2px) scale(1.015);
 }
 
-button:active:not([disabled]) {
+button:active:not([disabled]),
+.button-link:active {
   transform: translateY(1px) scale(0.995);
 }
 
@@ -1331,7 +1343,8 @@ input[type="range"]::-webkit-slider-thumb {
     padding: 20px 20px 16px;
   }
 
-  button {
+  button,
+  .button-link {
     min-height: 52px;
     padding: 12px 18px;
     font-size: 16px;
@@ -1397,7 +1410,9 @@ input[type="range"]::-webkit-slider-thumb {
 
 select:focus-visible,
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+.button-link:focus-visible,
+.level-node:focus-visible {
   outline: 3px solid rgba(255, 216, 78, 0.95);
   outline-offset: 2px;
 }
@@ -1623,7 +1638,8 @@ input:focus-visible {
     flex-direction: column;
   }
 
-  button {
+  button,
+  .button-link {
     width: 100%;
   }
 
