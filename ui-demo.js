@@ -1,20 +1,29 @@
+(() => {
+const demoData = window.DrawingDemoData;
 const {
-  getLevelById,
-  clampLevelId,
+  levelCatalog,
+  getLevelById: lookupLevelById,
+  clampLevelId: clampLevelIdFromData,
   loadJourneyState,
   saveJourneyState,
-} = window.DrawingDemoData;
+} = demoData;
+
+const USER_ROLE = "human";
+const USER_COLOR = "#171717";
+const MIN_POINT_DISTANCE = 1.5;
 
 const journeyState = loadJourneyState();
 const requestedLevelId = new URLSearchParams(window.location.search).get("level");
-const initialLevelId = clampLevelId(requestedLevelId || journeyState.currentLevelId || journeyState.recommendedLevelId);
-const initialLevel = getLevelById(initialLevelId);
+const initialLevelId = clampLevelIdFromData(
+  requestedLevelId || journeyState.currentLevelId || journeyState.recommendedLevelId,
+);
+const initialLevel = lookupLevelById(initialLevelId);
 
 const state = {
   currentLevelId: initialLevelId,
   recommendedLevelId: journeyState.recommendedLevelId,
   completedLevels: journeyState.completedLevels.slice(),
-  activeModel: initialLevel.theme,
+  activeModel: initialLevel.title,
   temperature: 0.25,
   aiStrokeCount: 3,
   smoothingLevel: 2,
@@ -60,7 +69,6 @@ const dom = {
 };
 
 const ctx = dom.canvas.getContext("2d");
-const prefersTouchInput = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 const supportsPointerInput = "PointerEvent" in window;
 
 function init() {
@@ -78,22 +86,22 @@ function init() {
 }
 
 function buildModelOptions() {
-  dom.selectModels.innerHTML = window.DrawingDemoData.levelCatalog
-    .map((level) => `<option value="${level.theme}">${level.theme}</option>`)
+  dom.selectModels.innerHTML = levelCatalog
+    .map((level) => `<option value="${level.title}">${level.title}</option>`)
     .join("");
   dom.selectModels.value = state.activeModel;
 }
 
 function bindControls() {
   dom.selectModels.addEventListener("change", () => {
-    state.activeModel = getCurrentLevel().theme;
+    state.activeModel = getCurrentLevel().title;
     dom.selectModels.value = state.activeModel;
     updateStatusUI();
     setStatus(`当前主题保持为“${state.activeModel}”，和所选关卡一致。`, "关卡主题");
   });
 
   dom.btnRandom.addEventListener("click", () => {
-    state.activeModel = getCurrentLevel().theme;
+    state.activeModel = getCurrentLevel().title;
     dom.selectModels.value = state.activeModel;
     updateStatusUI();
     setStatus(`当前主题固定为“${state.activeModel}”，和你进入的关卡保持一致。`, "关卡主题");
@@ -111,7 +119,7 @@ function bindControls() {
     }
     state.strokes.pop();
     render();
-    setStatus(`已撤回最后一笔，现在轮到${getCurrentRoleLabel()}。`, "撤回成功");
+    setStatus("已撤回最后一笔，可以继续用手指作画。", "撤回成功");
   });
 
   dom.btnExport.addEventListener("click", exportDrawing);
@@ -158,21 +166,15 @@ function bindControls() {
     setStatus(`线条圆滑度已调整到 ${state.smoothingLevel}。`, "调节已更新");
   });
 
-  if (supportsPointerInput) {
-    dom.canvas.addEventListener("pointerdown", handlePointerDown);
-    dom.canvas.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", handlePointerUp);
-    window.addEventListener("pointercancel", handlePointerUp);
-  } else if (prefersTouchInput) {
-    dom.canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
-    window.addEventListener("touchmove", handleTouchMove, { passive: false });
-    window.addEventListener("touchend", handleTouchEnd, { passive: false });
-    window.addEventListener("touchcancel", handleTouchEnd, { passive: false });
-  } else {
-    dom.canvas.addEventListener("mousedown", handleMouseDown);
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
+  if (!supportsPointerInput) {
+    setStatus("当前浏览器太旧，无法开启统一触控作画，请换用新版浏览器。", "浏览器不兼容");
+    return;
   }
+
+  dom.canvas.addEventListener("pointerdown", handlePointerDown, { passive: false });
+  window.addEventListener("pointermove", handlePointerMove, { passive: false });
+  window.addEventListener("pointerup", handlePointerUp, { passive: false });
+  window.addEventListener("pointercancel", handlePointerUp, { passive: false });
 }
 
 function bindSliderPair(slider, input, onChange) {
@@ -203,7 +205,11 @@ function handlePointerDown(event) {
   if (!startStroke(event.clientX, event.clientY, event.pointerId)) {
     return;
   }
-  dom.canvas.setPointerCapture?.(event.pointerId);
+  try {
+    dom.canvas.setPointerCapture?.(event.pointerId);
+  } catch (error) {
+    // Synthetic pointer events used in automation do not create an active pointer capture target.
+  }
 }
 
 function handlePointerMove(event) {
@@ -224,92 +230,24 @@ function handlePointerUp(event) {
   finishStroke();
 }
 
-function handleTouchStart(event) {
-  if (state.showLevelModal || event.touches.length !== 1 || state.isDrawing) {
-    return;
-  }
-
-  const touch = event.changedTouches[0];
-  if (!touch) {
-    return;
-  }
-
-  event.preventDefault();
-  startStroke(touch.clientX, touch.clientY, `touch-${touch.identifier}`);
-}
-
-function handleTouchMove(event) {
-  if (!state.isDrawing || event.touches.length > 1 || typeof state.pointerId !== "string") {
-    return;
-  }
-
-  const touch = getTrackedTouch(event.changedTouches);
-  if (!touch) {
-    return;
-  }
-
-  event.preventDefault();
-  moveStroke(touch.clientX, touch.clientY);
-}
-
-function handleTouchEnd(event) {
-  if (!state.isDrawing || typeof state.pointerId !== "string") {
-    return;
-  }
-
-  const touch = getTrackedTouch(event.changedTouches);
-  if (!touch) {
-    return;
-  }
-
-  event.preventDefault();
-  finishStroke();
-}
-
-function handleMouseDown(event) {
-  if (state.showLevelModal || state.isDrawing || event.button !== 0) {
-    return;
-  }
-
-  event.preventDefault();
-  startStroke(event.clientX, event.clientY, "mouse");
-}
-
-function handleMouseMove(event) {
-  if (!state.isDrawing || state.pointerId !== "mouse") {
-    return;
-  }
-
-  event.preventDefault();
-  moveStroke(event.clientX, event.clientY);
-}
-
-function handleMouseUp(event) {
-  if (!state.isDrawing || state.pointerId !== "mouse") {
-    return;
-  }
-
-  event.preventDefault();
-  finishStroke();
-}
-
-function startStroke(clientX, clientY, inputId) {
+function startStroke(clientX, clientY, pointerId) {
   const point = getCanvasPoint(clientX, clientY);
   if (!point) {
     return false;
   }
 
   state.isDrawing = true;
-  state.pointerId = inputId;
+  state.pointerId = pointerId;
   state.currentStroke = {
     id: `stroke-${Date.now()}`,
     index: state.strokes.length + 1,
-    role: getRoleForStrokeIndex(state.strokes.length + 1),
-    color: getColorForRole(getRoleForStrokeIndex(state.strokes.length + 1)),
+    role: USER_ROLE,
+    color: USER_COLOR,
     points: [point],
   };
 
-  setStatus(`正在绘制第 ${state.strokes.length + 1} 笔，当前是${getCurrentRoleLabel()}。`, "正在绘制");
+  render();
+  setStatus(`正在绘制第 ${state.strokes.length + 1} 笔，轨迹会跟随你的手指实时显示。`, "正在绘制");
   return true;
 }
 
@@ -320,7 +258,7 @@ function moveStroke(clientX, clientY) {
   }
 
   const previous = state.currentStroke.points[state.currentStroke.points.length - 1];
-  if (distance(previous, point) < 1.5) {
+  if (distance(previous, point) < MIN_POINT_DISTANCE) {
     return;
   }
 
@@ -337,15 +275,7 @@ function finishStroke() {
   state.isDrawing = false;
   state.pointerId = null;
   render();
-  setStatus(`第 ${state.strokes.length} 笔已经保存，下一笔轮到${getCurrentRoleLabel()}。`, "笔画已保存");
-}
-
-function getTrackedTouch(touchList) {
-  if (!touchList) {
-    return null;
-  }
-
-  return Array.from(touchList).find((touch) => `touch-${touch.identifier}` === state.pointerId) || null;
+  setStatus(`第 ${state.strokes.length} 笔已经保存，可以继续用手指作画。`, "笔画已保存");
 }
 
 function getCanvasPoint(clientX, clientY) {
@@ -353,13 +283,18 @@ function getCanvasPoint(clientX, clientY) {
   if (!rect.width || !rect.height) {
     return null;
   }
-  return [clientX - rect.left, clientY - rect.top];
+
+  return [
+    clamp(clientX - rect.left, 0, rect.width),
+    clamp(clientY - rect.top, 0, rect.height),
+  ];
 }
 
 function render() {
-  const width = dom.canvas.clientWidth;
-  const height = dom.canvas.clientHeight;
-  ctx.clearRect(0, 0, width, height);
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height);
+  ctx.restore();
 
   state.strokes.forEach((stroke) => drawStroke(stroke.points, stroke.color));
   if (state.currentStroke) {
@@ -377,9 +312,19 @@ function drawStroke(points, color) {
   const smoothed = smoothPoints(points, state.smoothingLevel);
   ctx.save();
   ctx.strokeStyle = color;
-  ctx.lineWidth = 3;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 4;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
+
+  if (smoothed.length === 1) {
+    ctx.beginPath();
+    ctx.arc(smoothed[0][0], smoothed[0][1], ctx.lineWidth / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
   ctx.beginPath();
   ctx.moveTo(smoothed[0][0], smoothed[0][1]);
   for (let index = 1; index < smoothed.length; index += 1) {
@@ -479,7 +424,7 @@ function syncSmoothingControls() {
 }
 
 function syncLevelSelection() {
-  state.activeModel = getCurrentLevel().theme;
+  state.activeModel = getCurrentLevel().title;
   dom.selectModels.value = state.activeModel;
 }
 
@@ -499,10 +444,10 @@ function setStatus(message, lastAction) {
 
 function updateStatusUI() {
   const currentLevel = getCurrentLevel();
-  state.activeModel = currentLevel.theme;
-  dom.selectModels.value = currentLevel.theme;
+  state.activeModel = currentLevel.title;
+  dom.selectModels.value = currentLevel.title;
   dom.textBoardLevel.textContent = currentLevel.title;
-  dom.textCurrentTheme.textContent = currentLevel.theme;
+  dom.textCurrentTheme.textContent = currentLevel.title;
   dom.textBoardNoteDescription.textContent = currentLevel.description;
   dom.textLastAction.textContent = state.lastAction;
   dom.textStatusMessage.textContent = state.statusMessage;
@@ -524,9 +469,9 @@ function completeLevelAndReturnToMap() {
     state.completedLevels.sort((a, b) => a - b);
   }
 
-  state.recommendedLevelId = state.currentLevelId < window.DrawingDemoData.levelCatalog.length
+  state.recommendedLevelId = state.currentLevelId < levelCatalog.length
     ? state.currentLevelId + 1
-    : window.DrawingDemoData.levelCatalog.length;
+    : levelCatalog.length;
 
   state.showLevelModal = false;
   syncJourneyState();
@@ -535,11 +480,11 @@ function completeLevelAndReturnToMap() {
 }
 
 function getCurrentLevel() {
-  return getLevelById(state.currentLevelId);
+  return lookupLevelById(state.currentLevelId);
 }
 
 function getCurrentRole() {
-  return getRoleForStrokeIndex(state.strokes.length + 1);
+  return USER_ROLE;
 }
 
 function getCurrentRoleLabel() {
@@ -547,10 +492,7 @@ function getCurrentRoleLabel() {
 }
 
 function getRoleForStrokeIndex(strokeIndex) {
-  const blockSize = clamp(state.aiStrokeCount, 1, 5);
-  const cycleSize = blockSize * 2;
-  const cycleIndex = (strokeIndex - 1) % cycleSize;
-  return cycleIndex < blockSize ? "human" : "ai";
+  return USER_ROLE;
 }
 
 function getColorForRole(role) {
@@ -593,3 +535,4 @@ function roundTo(value, digits) {
 }
 
 init();
+})();
