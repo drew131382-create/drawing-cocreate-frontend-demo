@@ -23,7 +23,7 @@ const state = {
   isDrawing: false,
   pointerId: null,
   showLevelModal: false,
-  statusMessage: `已经进入${initialLevel.title}，从黑色的人工作画开始吧。`,
+  statusMessage: `已经进入${initialLevel.title}，从黑色的人工作画开始吧，手指和 Apple Pencil 都能直接画。`,
   lastAction: "进入关卡",
 };
 
@@ -212,7 +212,7 @@ function handlePointerUp(event) {
 }
 
 function handleTouchStart(event) {
-  if (state.showLevelModal || event.touches.length === 0) {
+  if (state.showLevelModal || event.touches.length !== 1 || state.isDrawing) {
     return;
   }
 
@@ -226,7 +226,7 @@ function handleTouchStart(event) {
 }
 
 function handleTouchMove(event) {
-  if (!state.isDrawing) {
+  if (!state.isDrawing || event.touches.length > 1) {
     return;
   }
 
