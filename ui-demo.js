@@ -1,7 +1,48 @@
-const demoModels = ["儿童涂鸦", "动物速写", "卡通场景", "自由创意"];
+const levelCatalog = [
+  {
+    id: 1,
+    title: "第 1 关",
+    theme: "儿童涂鸦",
+    description: "从第一张画纸开始，先画出你最想补上的那一笔。",
+  },
+  {
+    id: 2,
+    title: "第 2 关",
+    theme: "小动物朋友",
+    description: "试着帮小动物补上最可爱的表情和轮廓。",
+  },
+  {
+    id: 3,
+    title: "第 3 关",
+    theme: "云朵小镇",
+    description: "在软软的云朵上，画出房子和小路的感觉。",
+  },
+  {
+    id: 4,
+    title: "第 4 关",
+    theme: "海底冒险",
+    description: "让小鱼和泡泡一起出现，画出热闹的海底世界。",
+  },
+  {
+    id: 5,
+    title: "第 5 关",
+    theme: "魔法花园",
+    description: "这一关请用画笔种出会发光的小花和藤蔓。",
+  },
+  {
+    id: 6,
+    title: "第 6 关",
+    theme: "星空旅行",
+    description: "把最后一关画成一场飞向月亮的星空旅行。",
+  },
+];
 
 const state = {
-  activeModel: demoModels[0],
+  view: "map",
+  currentLevelId: 1,
+  recommendedLevelId: 1,
+  completedLevels: [],
+  activeModel: levelCatalog[0].theme,
   temperature: 0.25,
   aiStrokeCount: 3,
   smoothingLevel: 2,
@@ -9,13 +50,14 @@ const state = {
   currentStroke: null,
   isDrawing: false,
   pointerId: null,
-  level: 1,
   showLevelModal: false,
-  statusMessage: "样机已经准备好了，先从黑色的人工作画开始吧。",
+  statusMessage: "先在地图上选一关，我们再一起开始画。",
   lastAction: "准备好了",
 };
 
 const dom = {
+  mapScreen: document.getElementById("mapScreen"),
+  levelScreen: document.getElementById("levelScreen"),
   selectModels: document.getElementById("selectModels"),
   btnRandom: document.getElementById("btnRandom"),
   btnClear: document.getElementById("btnClear"),
@@ -26,6 +68,8 @@ const dom = {
   btnRetryAI: document.getElementById("btnRetryAI"),
   btnUndoAI: document.getElementById("btnUndoAI"),
   btnUndoUser: document.getElementById("btnUndoUser"),
+  btnBackToMap: document.getElementById("btnBackToMap"),
+  btnStartCurrentLevel: document.getElementById("btnStartCurrentLevel"),
   inputTemperature: document.getElementById("inputTemperature"),
   valueTemperature: document.getElementById("valueTemperature"),
   inputAIStrokeCount: document.getElementById("inputAIStrokeCount"),
@@ -33,8 +77,15 @@ const dom = {
   inputSmoothingLevel: document.getElementById("inputSmoothingLevel"),
   valueSmoothingLevel: document.getElementById("valueSmoothingLevel"),
   textBoardLevel: document.getElementById("textBoardLevel"),
+  textCurrentTheme: document.getElementById("textCurrentTheme"),
+  textBoardNoteTitle: document.getElementById("textBoardNoteTitle"),
+  textBoardNoteDescription: document.getElementById("textBoardNoteDescription"),
   textLastAction: document.getElementById("textLastAction"),
   textStatusMessage: document.getElementById("textStatusMessage"),
+  mapCurrentLevelLabel: document.getElementById("mapCurrentLevelLabel"),
+  mapCompletedCount: document.getElementById("mapCompletedCount"),
+  mapCurrentTheme: document.getElementById("mapCurrentTheme"),
+  mapCurrentDescription: document.getElementById("mapCurrentDescription"),
   sketch: document.getElementById("sketch"),
   canvas: document.getElementById("drawCanvas"),
   roleSticker: document.getElementById("roleSticker"),
@@ -42,6 +93,7 @@ const dom = {
   levelModal: document.getElementById("levelModal"),
   btnCloseModal: document.getElementById("btnCloseModal"),
   btnNextLevel: document.getElementById("btnNextLevel"),
+  levelNodes: Array.from(document.querySelectorAll(".level-node")),
 };
 
 const ctx = dom.canvas.getContext("2d");
@@ -49,6 +101,10 @@ const ctx = dom.canvas.getContext("2d");
 function init() {
   buildModelOptions();
   bindControls();
+  syncTemperatureControls();
+  syncAIStrokeControls();
+  syncSmoothingControls();
+  syncLevelSelection();
   resizeCanvas();
   render();
   updateStatusUI();
@@ -56,27 +112,23 @@ function init() {
 }
 
 function buildModelOptions() {
-  dom.selectModels.innerHTML = demoModels
-    .map((model) => `<option value="${model}">${model}</option>`)
+  dom.selectModels.innerHTML = levelCatalog
+    .map((level) => `<option value="${level.theme}">${level.theme}</option>`)
     .join("");
   dom.selectModels.value = state.activeModel;
 }
 
 function bindControls() {
-  syncTemperatureControls();
-  syncAIStrokeControls();
-  syncSmoothingControls();
-
   dom.selectModels.addEventListener("change", () => {
     state.activeModel = dom.selectModels.value;
     setStatus(`已经切换到“${state.activeModel}”主题。`, "主题已切换");
   });
 
   dom.btnRandom.addEventListener("click", () => {
-    const nextModel = demoModels[Math.floor(Math.random() * demoModels.length)];
-    state.activeModel = nextModel;
-    dom.selectModels.value = nextModel;
-    setStatus(`帮你随机换到了“${nextModel}”主题。`, "随机主题");
+    const nextLevel = levelCatalog[Math.floor(Math.random() * levelCatalog.length)];
+    state.activeModel = nextLevel.theme;
+    dom.selectModels.value = nextLevel.theme;
+    setStatus(`帮你随机换到了“${nextLevel.theme}”主题。`, "随机主题");
   });
 
   dom.btnClear.addEventListener("click", () => {
@@ -97,11 +149,21 @@ function bindControls() {
   dom.btnExport.addEventListener("click", exportDrawing);
   dom.btnFinish.addEventListener("click", openLevelModal);
   dom.btnCloseModal.addEventListener("click", closeLevelModal);
-  dom.btnNextLevel.addEventListener("click", goToNextLevel);
+  dom.btnNextLevel.addEventListener("click", completeLevelAndReturnToMap);
+  dom.btnBackToMap.addEventListener("click", returnToMap);
+  dom.btnStartCurrentLevel.addEventListener("click", () => enterLevel(state.recommendedLevelId));
+
   dom.levelModal.addEventListener("click", (event) => {
     if (event.target instanceof HTMLElement && event.target.dataset.closeModal === "true") {
       closeLevelModal();
     }
+  });
+
+  dom.levelNodes.forEach((node) => {
+    node.addEventListener("click", () => {
+      const id = Number(node.dataset.levelId);
+      enterLevel(id);
+    });
   });
 
   [
@@ -159,14 +221,16 @@ function resizeCanvas() {
 }
 
 function handlePointerDown(event) {
-  if (state.showLevelModal) {
+  if (state.view !== "level" || state.showLevelModal) {
     return;
   }
+
   event.preventDefault();
   const point = getCanvasPoint(event);
   if (!point) {
     return;
   }
+
   state.isDrawing = true;
   state.pointerId = event.pointerId;
   state.currentStroke = {
@@ -176,6 +240,7 @@ function handlePointerDown(event) {
     color: getColorForRole(getRoleForStrokeIndex(state.strokes.length + 1)),
     points: [point],
   };
+
   dom.canvas.setPointerCapture?.(event.pointerId);
   setStatus(`正在绘制第 ${state.strokes.length + 1} 笔，当前是${getCurrentRoleLabel()}。`, "正在绘制");
 }
@@ -184,15 +249,18 @@ function handlePointerMove(event) {
   if (!state.isDrawing || state.pointerId !== event.pointerId) {
     return;
   }
+
   event.preventDefault();
   const point = getCanvasPoint(event);
   if (!point) {
     return;
   }
+
   const previous = state.currentStroke.points[state.currentStroke.points.length - 1];
   if (distance(previous, point) < 1.5) {
     return;
   }
+
   state.currentStroke.points.push(point);
   render();
 }
@@ -201,10 +269,12 @@ function handlePointerUp(event) {
   if (!state.isDrawing || state.pointerId !== event.pointerId) {
     return;
   }
+
   event.preventDefault();
   if (state.currentStroke && state.currentStroke.points.length > 0) {
     state.strokes.push({...state.currentStroke, points: state.currentStroke.points.slice()});
   }
+
   state.currentStroke = null;
   state.isDrawing = false;
   state.pointerId = null;
@@ -229,6 +299,7 @@ function render() {
   if (state.currentStroke) {
     drawStroke(state.currentStroke.points, state.currentStroke.color);
   }
+
   updateStatusUI();
 }
 
@@ -245,8 +316,8 @@ function drawStroke(points, color) {
   ctx.lineJoin = "round";
   ctx.beginPath();
   ctx.moveTo(smoothed[0][0], smoothed[0][1]);
-  for (let i = 1; i < smoothed.length; i += 1) {
-    ctx.lineTo(smoothed[i][0], smoothed[i][1]);
+  for (let index = 1; index < smoothed.length; index += 1) {
+    ctx.lineTo(smoothed[index][0], smoothed[index][1]);
   }
   ctx.stroke();
   ctx.restore();
@@ -280,9 +351,13 @@ function smoothPoints(points, level) {
 }
 
 function exportDrawing() {
+  const level = getCurrentLevel();
   const snapshot = {
     exportedAt: new Date().toISOString(),
-    level: state.level,
+    currentView: state.view,
+    currentLevelId: state.currentLevelId,
+    currentLevelTheme: level.theme,
+    completedLevels: state.completedLevels.slice(),
     modelName: state.activeModel,
     temperature: state.temperature,
     strokesPerTurn: state.aiStrokeCount,
@@ -337,6 +412,12 @@ function syncSmoothingControls() {
   dom.valueSmoothingLevel.value = String(state.smoothingLevel);
 }
 
+function syncLevelSelection() {
+  const level = getCurrentLevel();
+  state.activeModel = level.theme;
+  dom.selectModels.value = level.theme;
+}
+
 function setStatus(message, lastAction) {
   state.statusMessage = message;
   state.lastAction = lastAction;
@@ -344,7 +425,15 @@ function setStatus(message, lastAction) {
 }
 
 function updateStatusUI() {
-  dom.textBoardLevel.textContent = `第 ${state.level} 关`;
+  const currentLevel = getCurrentLevel();
+  const recommendedLevel = getRecommendedLevel();
+  const completedCount = state.completedLevels.length;
+
+  dom.mapScreen.hidden = state.view !== "map";
+  dom.levelScreen.hidden = state.view !== "level";
+  dom.textBoardLevel.textContent = `${currentLevel.title}`;
+  dom.textCurrentTheme.textContent = currentLevel.theme;
+  dom.textBoardNoteDescription.textContent = currentLevel.description;
   dom.textLastAction.textContent = state.lastAction;
   dom.textStatusMessage.textContent = state.statusMessage;
   dom.roleSticker.textContent = getCurrentRoleLabel();
@@ -352,6 +441,64 @@ function updateStatusUI() {
   dom.roleSticker.classList.toggle("role-ai", getCurrentRole() === "ai");
   dom.levelModal.hidden = !state.showLevelModal;
   dom.btnUndoUser.disabled = state.strokes.length === 0;
+
+  dom.mapCurrentLevelLabel.textContent = `${recommendedLevel.title}`;
+  dom.mapCompletedCount.textContent = `${completedCount} / ${levelCatalog.length}`;
+  dom.mapCurrentTheme.textContent = recommendedLevel.theme;
+  dom.mapCurrentDescription.textContent = recommendedLevel.description;
+  dom.btnStartCurrentLevel.textContent = `进入${recommendedLevel.title}`;
+
+  dom.levelNodes.forEach((node) => {
+    const levelId = Number(node.dataset.levelId);
+    const isCompleted = state.completedLevels.includes(levelId);
+    const isRecommended = state.recommendedLevelId === levelId;
+    const isSelected = state.currentLevelId === levelId;
+
+    node.classList.toggle("is-completed", isCompleted);
+    node.classList.toggle("is-recommended", isRecommended);
+    node.classList.toggle("is-selected", isSelected);
+  });
+}
+
+function enterLevel(levelId) {
+  state.currentLevelId = levelId;
+  state.view = "level";
+  state.showLevelModal = false;
+  syncLevelSelection();
+  clearCanvasState();
+  setStatus(`已经进入${getCurrentLevel().title}，从黑色的人工作画开始吧。`, "进入关卡");
+}
+
+function returnToMap() {
+  state.view = "map";
+  state.showLevelModal = false;
+  updateStatusUI();
+  setStatus("已经回到地图，可以继续选关冒险。", "返回地图");
+}
+
+function completeLevelAndReturnToMap() {
+  if (!state.completedLevels.includes(state.currentLevelId)) {
+    state.completedLevels.push(state.currentLevelId);
+    state.completedLevels.sort((a, b) => a - b);
+  }
+
+  state.recommendedLevelId = state.currentLevelId < levelCatalog.length
+    ? state.currentLevelId + 1
+    : levelCatalog.length;
+
+  state.showLevelModal = false;
+  clearCanvasState();
+  state.view = "map";
+  updateStatusUI();
+  setStatus(`${getCurrentLevel().title} 已完成，回到地图继续冒险吧。`, "闯关成功");
+}
+
+function getCurrentLevel() {
+  return levelCatalog.find((level) => level.id === state.currentLevelId) || levelCatalog[0];
+}
+
+function getRecommendedLevel() {
+  return levelCatalog.find((level) => level.id === state.recommendedLevelId) || levelCatalog[0];
 }
 
 function getCurrentRole() {
@@ -384,20 +531,13 @@ function clearCanvasState() {
 function openLevelModal() {
   state.showLevelModal = true;
   updateStatusUI();
-  setStatus("这一关已经完成，可以进入下一关。", "等待进入下一关");
+  setStatus("这张画纸已经完成啦，回到地图继续冒险吧。", "等待回到地图");
 }
 
 function closeLevelModal() {
   state.showLevelModal = false;
   updateStatusUI();
   setStatus("继续看看这一关的画面吧。", "继续预览");
-}
-
-function goToNextLevel() {
-  state.level += 1;
-  state.showLevelModal = false;
-  clearCanvasState();
-  setStatus(`已进入第 ${state.level} 关，从人工作画重新开始。`, "进入下一关");
 }
 
 function distance(a, b) {
