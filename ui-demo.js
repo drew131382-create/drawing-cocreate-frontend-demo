@@ -1,48 +1,20 @@
-const levelCatalog = [
-  {
-    id: 1,
-    title: "第 1 关",
-    theme: "儿童涂鸦",
-    description: "从第一张画纸开始，先画出你最想补上的那一笔。",
-  },
-  {
-    id: 2,
-    title: "第 2 关",
-    theme: "小动物朋友",
-    description: "试着帮小动物补上最可爱的表情和轮廓。",
-  },
-  {
-    id: 3,
-    title: "第 3 关",
-    theme: "云朵小镇",
-    description: "在软软的云朵上，画出房子和小路的感觉。",
-  },
-  {
-    id: 4,
-    title: "第 4 关",
-    theme: "海底冒险",
-    description: "让小鱼和泡泡一起出现，画出热闹的海底世界。",
-  },
-  {
-    id: 5,
-    title: "第 5 关",
-    theme: "魔法花园",
-    description: "这一关请用画笔种出会发光的小花和藤蔓。",
-  },
-  {
-    id: 6,
-    title: "第 6 关",
-    theme: "星空旅行",
-    description: "把最后一关画成一场飞向月亮的星空旅行。",
-  },
-];
+const {
+  getLevelById,
+  clampLevelId,
+  loadJourneyState,
+  saveJourneyState,
+} = window.DrawingDemoData;
+
+const journeyState = loadJourneyState();
+const requestedLevelId = new URLSearchParams(window.location.search).get("level");
+const initialLevelId = clampLevelId(requestedLevelId || journeyState.currentLevelId || journeyState.recommendedLevelId);
+const initialLevel = getLevelById(initialLevelId);
 
 const state = {
-  view: "map",
-  currentLevelId: 1,
-  recommendedLevelId: 1,
-  completedLevels: [],
-  activeModel: levelCatalog[0].theme,
+  currentLevelId: initialLevelId,
+  recommendedLevelId: journeyState.recommendedLevelId,
+  completedLevels: journeyState.completedLevels.slice(),
+  activeModel: initialLevel.theme,
   temperature: 0.25,
   aiStrokeCount: 3,
   smoothingLevel: 2,
@@ -51,13 +23,11 @@ const state = {
   isDrawing: false,
   pointerId: null,
   showLevelModal: false,
-  statusMessage: "先在地图上选一关，我们再一起开始画。",
-  lastAction: "准备好了",
+  statusMessage: `已经进入${initialLevel.title}，从黑色的人工作画开始吧。`,
+  lastAction: "进入关卡",
 };
 
 const dom = {
-  mapScreen: document.getElementById("mapScreen"),
-  levelScreen: document.getElementById("levelScreen"),
   selectModels: document.getElementById("selectModels"),
   btnRandom: document.getElementById("btnRandom"),
   btnClear: document.getElementById("btnClear"),
@@ -69,7 +39,6 @@ const dom = {
   btnUndoAI: document.getElementById("btnUndoAI"),
   btnUndoUser: document.getElementById("btnUndoUser"),
   btnBackToMap: document.getElementById("btnBackToMap"),
-  btnStartCurrentLevel: document.getElementById("btnStartCurrentLevel"),
   inputTemperature: document.getElementById("inputTemperature"),
   valueTemperature: document.getElementById("valueTemperature"),
   inputAIStrokeCount: document.getElementById("inputAIStrokeCount"),
@@ -78,14 +47,9 @@ const dom = {
   valueSmoothingLevel: document.getElementById("valueSmoothingLevel"),
   textBoardLevel: document.getElementById("textBoardLevel"),
   textCurrentTheme: document.getElementById("textCurrentTheme"),
-  textBoardNoteTitle: document.getElementById("textBoardNoteTitle"),
   textBoardNoteDescription: document.getElementById("textBoardNoteDescription"),
   textLastAction: document.getElementById("textLastAction"),
   textStatusMessage: document.getElementById("textStatusMessage"),
-  mapCurrentLevelLabel: document.getElementById("mapCurrentLevelLabel"),
-  mapCompletedCount: document.getElementById("mapCompletedCount"),
-  mapCurrentTheme: document.getElementById("mapCurrentTheme"),
-  mapCurrentDescription: document.getElementById("mapCurrentDescription"),
   sketch: document.getElementById("sketch"),
   canvas: document.getElementById("drawCanvas"),
   roleSticker: document.getElementById("roleSticker"),
@@ -93,7 +57,6 @@ const dom = {
   levelModal: document.getElementById("levelModal"),
   btnCloseModal: document.getElementById("btnCloseModal"),
   btnNextLevel: document.getElementById("btnNextLevel"),
-  levelNodes: Array.from(document.querySelectorAll(".level-node")),
 };
 
 const ctx = dom.canvas.getContext("2d");
@@ -105,6 +68,7 @@ function init() {
   syncAIStrokeControls();
   syncSmoothingControls();
   syncLevelSelection();
+  syncJourneyState();
   resizeCanvas();
   render();
   updateStatusUI();
@@ -112,7 +76,7 @@ function init() {
 }
 
 function buildModelOptions() {
-  dom.selectModels.innerHTML = levelCatalog
+  dom.selectModels.innerHTML = window.DrawingDemoData.levelCatalog
     .map((level) => `<option value="${level.theme}">${level.theme}</option>`)
     .join("");
   dom.selectModels.value = state.activeModel;
@@ -125,7 +89,8 @@ function bindControls() {
   });
 
   dom.btnRandom.addEventListener("click", () => {
-    const nextLevel = levelCatalog[Math.floor(Math.random() * levelCatalog.length)];
+    const levels = window.DrawingDemoData.levelCatalog;
+    const nextLevel = levels[Math.floor(Math.random() * levels.length)];
     state.activeModel = nextLevel.theme;
     dom.selectModels.value = nextLevel.theme;
     setStatus(`帮你随机换到了“${nextLevel.theme}”主题。`, "随机主题");
@@ -151,19 +116,11 @@ function bindControls() {
   dom.btnCloseModal.addEventListener("click", closeLevelModal);
   dom.btnNextLevel.addEventListener("click", completeLevelAndReturnToMap);
   dom.btnBackToMap.addEventListener("click", returnToMap);
-  dom.btnStartCurrentLevel.addEventListener("click", () => enterLevel(state.recommendedLevelId));
 
   dom.levelModal.addEventListener("click", (event) => {
     if (event.target instanceof HTMLElement && event.target.dataset.closeModal === "true") {
       closeLevelModal();
     }
-  });
-
-  dom.levelNodes.forEach((node) => {
-    node.addEventListener("click", () => {
-      const id = Number(node.dataset.levelId);
-      enterLevel(id);
-    });
   });
 
   [
@@ -221,7 +178,7 @@ function resizeCanvas() {
 }
 
 function handlePointerDown(event) {
-  if (state.view !== "level" || state.showLevelModal) {
+  if (state.showLevelModal) {
     return;
   }
 
@@ -272,7 +229,7 @@ function handlePointerUp(event) {
 
   event.preventDefault();
   if (state.currentStroke && state.currentStroke.points.length > 0) {
-    state.strokes.push({...state.currentStroke, points: state.currentStroke.points.slice()});
+    state.strokes.push({ ...state.currentStroke, points: state.currentStroke.points.slice() });
   }
 
   state.currentStroke = null;
@@ -354,7 +311,7 @@ function exportDrawing() {
   const level = getCurrentLevel();
   const snapshot = {
     exportedAt: new Date().toISOString(),
-    currentView: state.view,
+    currentView: "level-page",
     currentLevelId: state.currentLevelId,
     currentLevelTheme: level.theme,
     completedLevels: state.completedLevels.slice(),
@@ -413,9 +370,15 @@ function syncSmoothingControls() {
 }
 
 function syncLevelSelection() {
-  const level = getCurrentLevel();
-  state.activeModel = level.theme;
-  dom.selectModels.value = level.theme;
+  dom.selectModels.value = state.activeModel;
+}
+
+function syncJourneyState() {
+  saveJourneyState({
+    currentLevelId: state.currentLevelId,
+    recommendedLevelId: state.recommendedLevelId,
+    completedLevels: state.completedLevels,
+  });
 }
 
 function setStatus(message, lastAction) {
@@ -426,13 +389,8 @@ function setStatus(message, lastAction) {
 
 function updateStatusUI() {
   const currentLevel = getCurrentLevel();
-  const recommendedLevel = getRecommendedLevel();
-  const completedCount = state.completedLevels.length;
-
-  dom.mapScreen.hidden = state.view !== "map";
-  dom.levelScreen.hidden = state.view !== "level";
-  dom.textBoardLevel.textContent = `${currentLevel.title}`;
-  dom.textCurrentTheme.textContent = currentLevel.theme;
+  dom.textBoardLevel.textContent = currentLevel.title;
+  dom.textCurrentTheme.textContent = state.activeModel;
   dom.textBoardNoteDescription.textContent = currentLevel.description;
   dom.textLastAction.textContent = state.lastAction;
   dom.textStatusMessage.textContent = state.statusMessage;
@@ -441,39 +399,11 @@ function updateStatusUI() {
   dom.roleSticker.classList.toggle("role-ai", getCurrentRole() === "ai");
   dom.levelModal.hidden = !state.showLevelModal;
   dom.btnUndoUser.disabled = state.strokes.length === 0;
-
-  dom.mapCurrentLevelLabel.textContent = `${recommendedLevel.title}`;
-  dom.mapCompletedCount.textContent = `${completedCount} / ${levelCatalog.length}`;
-  dom.mapCurrentTheme.textContent = recommendedLevel.theme;
-  dom.mapCurrentDescription.textContent = recommendedLevel.description;
-  dom.btnStartCurrentLevel.textContent = `进入${recommendedLevel.title}`;
-
-  dom.levelNodes.forEach((node) => {
-    const levelId = Number(node.dataset.levelId);
-    const isCompleted = state.completedLevels.includes(levelId);
-    const isRecommended = state.recommendedLevelId === levelId;
-    const isSelected = state.currentLevelId === levelId;
-
-    node.classList.toggle("is-completed", isCompleted);
-    node.classList.toggle("is-recommended", isRecommended);
-    node.classList.toggle("is-selected", isSelected);
-  });
-}
-
-function enterLevel(levelId) {
-  state.currentLevelId = levelId;
-  state.view = "level";
-  state.showLevelModal = false;
-  syncLevelSelection();
-  clearCanvasState();
-  setStatus(`已经进入${getCurrentLevel().title}，从黑色的人工作画开始吧。`, "进入关卡");
 }
 
 function returnToMap() {
-  state.view = "map";
-  state.showLevelModal = false;
-  updateStatusUI();
-  setStatus("已经回到地图，可以继续选关冒险。", "返回地图");
+  syncJourneyState();
+  window.location.href = "./index.html";
 }
 
 function completeLevelAndReturnToMap() {
@@ -482,23 +412,18 @@ function completeLevelAndReturnToMap() {
     state.completedLevels.sort((a, b) => a - b);
   }
 
-  state.recommendedLevelId = state.currentLevelId < levelCatalog.length
+  state.recommendedLevelId = state.currentLevelId < window.DrawingDemoData.levelCatalog.length
     ? state.currentLevelId + 1
-    : levelCatalog.length;
+    : window.DrawingDemoData.levelCatalog.length;
 
   state.showLevelModal = false;
+  syncJourneyState();
   clearCanvasState();
-  state.view = "map";
-  updateStatusUI();
-  setStatus(`${getCurrentLevel().title} 已完成，回到地图继续冒险吧。`, "闯关成功");
+  window.location.href = "./index.html";
 }
 
 function getCurrentLevel() {
-  return levelCatalog.find((level) => level.id === state.currentLevelId) || levelCatalog[0];
-}
-
-function getRecommendedLevel() {
-  return levelCatalog.find((level) => level.id === state.recommendedLevelId) || levelCatalog[0];
+  return getLevelById(state.currentLevelId);
 }
 
 function getCurrentRole() {

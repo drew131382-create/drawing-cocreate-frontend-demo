@@ -18,8 +18,8 @@ limitations under the License.
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <link rel="stylesheet" href="./style.css?v=20260629-map">
-    <title>一起画画吧</title>
+    <link rel="stylesheet" href="./style.css?v=20260629-split">
+    <title>一起画画吧 | 关卡地图</title>
   </head>
   <body>
     <div class="page-decor decor-cloud decor-cloud-left"></div>
@@ -30,7 +30,7 @@ limitations under the License.
     <div class="page-decor decor-crayon"></div>
 
     <div class="app-shell">
-      <section class="map-screen" id="mapScreen">
+      <section class="map-screen">
         <div class="map-shell">
           <aside class="map-sidebar">
             <section class="card hero-card tilt-left">
@@ -38,7 +38,7 @@ limitations under the License.
                 <h1>一起画画吧</h1>
                 <span class="hero-pill">冒险地图</span>
               </div>
-              <p>选一关开始，用你的画笔和小蓝画笔一起闯关。</p>
+              <p>先在地图上选关，再进入单独的画画页面开始演示。</p>
             </section>
 
             <section class="card panel-card panel-blue tilt-right">
@@ -53,7 +53,7 @@ limitations under the License.
                   <span id="mapCompletedCount">0 / 6</span>
                 </div>
               </div>
-              <p class="panel-help">所有关卡都可以直接点开，适合录屏演示切换。</p>
+              <p class="panel-help">所有关卡都可以点击，适合录屏时灵活切换演示顺序。</p>
             </section>
 
             <section class="card panel-card panel-mint tilt-left">
@@ -63,7 +63,7 @@ limitations under the License.
                 <p id="mapCurrentDescription">从第一张画纸开始，先画出你最想补上的那一笔。</p>
               </div>
               <div class="button-row button-row-single">
-                <button id="btnStartCurrentLevel">从当前关开始</button>
+                <button id="btnStartCurrentLevel">进入第 1 关</button>
               </div>
             </section>
           </aside>
@@ -126,143 +126,8 @@ limitations under the License.
           </main>
         </div>
       </section>
-
-      <section class="level-screen" id="levelScreen" hidden>
-        <aside class="sidebar">
-          <section class="card hero-card tilt-left">
-            <div class="hero-card-top">
-              <h1>一起画画吧</h1>
-              <span class="hero-pill">视频演示样机</span>
-            </div>
-            <div class="button-row button-row-single hero-button-row">
-              <button id="btnBackToMap">返回地图</button>
-            </div>
-          </section>
-
-          <section class="card panel-card panel-blue tilt-right">
-            <h2>绘画主题</h2>
-            <label class="control-group control-block">
-              <span class="control-label">当前主题</span>
-              <div class="select-shell">
-                <select id="selectModels"></select>
-              </div>
-            </label>
-            <div class="button-row">
-              <button id="btnRandom">换个主题</button>
-              <button id="btnClear">重新开始</button>
-            </div>
-            <div class="button-row button-row-single">
-              <button id="btnExport">导出记录</button>
-            </div>
-          </section>
-
-          <section class="card panel-card panel-peach tilt-left">
-            <h2>和 AI 轮流画</h2>
-            <p class="panel-help">当前是录屏用样机，蓝色笔画同样由你手工完成。</p>
-            <div class="button-row">
-              <button id="btnGenerateAI">AI 接着画</button>
-              <button id="btnGenerateFullAI">AI 帮我画完整</button>
-            </div>
-            <div class="button-row">
-              <button id="btnKeepAI">保留这次</button>
-              <button id="btnRetryAI">换一个试试</button>
-            </div>
-            <div class="button-row">
-              <button id="btnUndoAI">撤回 AI</button>
-              <button id="btnUndoUser">撤回这笔</button>
-            </div>
-          </section>
-
-          <section class="card panel-card panel-mint tilt-right">
-            <h2>画画小调节</h2>
-            <div class="controls slider-stack">
-              <label class="control-group control-slider">
-                <div class="slider-head">
-                  <span class="control-label">创意程度</span>
-                  <input id="valueTemperature" type="number" min="0" max="1" step="0.05">
-                </div>
-                <input id="inputTemperature" type="range" min="0" max="1" step="0.05">
-              </label>
-
-              <label class="control-group control-slider">
-                <div class="slider-head">
-                  <span class="control-label">每轮笔数</span>
-                  <input id="valueAIStrokeCount" type="number" min="1" max="5" step="1">
-                </div>
-                <input id="inputAIStrokeCount" type="range" min="1" max="5" step="1">
-              </label>
-
-              <label class="control-group control-slider">
-                <div class="slider-head">
-                  <span class="control-label">线条圆滑度</span>
-                  <input id="valueSmoothingLevel" type="number" min="0" max="4" step="1">
-                </div>
-                <input id="inputSmoothingLevel" type="range" min="0" max="4" step="1">
-              </label>
-            </div>
-          </section>
-
-          <section class="card status-panel">
-            <div class="status-top">
-              <h2>现在状态</h2>
-              <span class="status-badge" id="textLastAction">准备好了</span>
-            </div>
-            <div class="status-main">
-              <div class="status-item">
-                <strong>现在状态</strong>
-                <span id="textStatusMessage">-</span>
-              </div>
-            </div>
-          </section>
-        </aside>
-
-        <main class="stage">
-          <div class="stage-card">
-            <div class="stage-header">
-              <div class="stage-header-main">
-                <h2>画布区</h2>
-                <span class="stage-theme-pill" id="textCurrentTheme">儿童涂鸦</span>
-              </div>
-              <div class="legend-pills">
-                <span class="legend-pill legend-user">你来画：黑色</span>
-                <span class="legend-pill legend-ai">AI 来画：蓝色</span>
-              </div>
-            </div>
-
-            <div class="sketch-board">
-              <div class="paper-tape paper-tape-left"></div>
-              <div class="paper-tape paper-tape-right"></div>
-              <div class="level-badge" id="textBoardLevel">第 1 关</div>
-              <div class="board-note">
-                <strong id="textBoardNoteTitle">这里是画纸</strong>
-                <span id="textBoardNoteDescription">从第一张画纸开始，先画出你最想补上的那一笔。</span>
-              </div>
-              <div class="board-smile board-smile-top"></div>
-              <div class="board-smile board-smile-bottom"></div>
-              <div class="board-star board-star-bottom"></div>
-              <div id="sketch">
-                <canvas id="drawCanvas"></canvas>
-                <div class="role-sticker role-human" id="roleSticker">人工作画</div>
-                <button class="finish-sticker" id="btnFinish" type="button">完成</button>
-                <div class="level-modal" id="levelModal" hidden>
-                  <div class="level-modal-backdrop" data-close-modal="true"></div>
-                  <div class="level-modal-card" role="dialog" aria-modal="true" aria-labelledby="levelModalTitle">
-                    <div class="modal-star"></div>
-                    <p class="level-modal-kicker">太棒啦</p>
-                    <h3 id="levelModalTitle">闯关成功</h3>
-                    <p class="level-modal-copy">这张画纸已经完成啦，回到地图继续冒险吧。</p>
-                    <div class="level-modal-actions">
-                      <button class="modal-secondary" id="btnCloseModal" type="button">再看一眼</button>
-                      <button class="modal-primary" id="btnNextLevel" type="button">回到地图</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-      </section>
     </div>
+    <script src="level-data.js"></script>
+    <script src="map.js"></script>
   </body>
-  <script src="ui-demo.js"></script>
 </html>
